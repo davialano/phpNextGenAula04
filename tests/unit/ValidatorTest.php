@@ -1,45 +1,47 @@
 <?php
 
+use Application\Validations\IsEven;
+use Application\Validations\IsGreaterThan;
+use Application\Validations\IsInteger;
 use Application\Validator;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
+#[CoversClass('Application\ValidationGroup')]
 final class ValidatorTest extends TestCase
 {
-    public function testClassValidatorShouldValidateIsInteger(): void
+    public function testValidationGroupWithNoValidations(): void
     {
-        $result = Validator::validateInteger('1');
-        $this->assertTrue($result);
+        $validationGroup = Validator::createValidationGroup();
 
-        $result = Validator::validateInteger('-2');
-        $this->assertTrue($result);
+        $this->assertTrue($validationGroup->handleValidate('teste'));
+    }
+    
+    public function testClassValidatorShouldAggregateMultipleValidations(): void
+    {
+        $validationGroup = Validator::createValidationGroup()
+            ->addValidation(new IsInteger())
+            ->addValidation(new IsGreaterThan(200))
+            ->addValidation(new IsEven());
+
+        $this->assertTrue($validationGroup->handleValidate('302'));
+        $this->assertFalse($validationGroup->handleValidate('301'));
+        $this->assertFalse($validationGroup->handleValidate('199'));
     }
 
-    public function testClassValidatorShouldValidateIsNotInteger(): void
+    public function testClassValidatorShouldHandleEmptyValidationGroup(): void
     {
-        $result = Validator::validateInteger('123.11');
-        $this->assertFalse($result);
+        $validationGroup = Validator::createValidationGroup();
+
+        $this->assertTrue($validationGroup->handleValidate('teste'));
     }
 
-    public function testClassValidatorShouldValidateMultipleValidations(): void
+    public function testClassValidatorShouldHandleSingleValidation(): void
     {
-        $value = '302';
-        $result1 = Validator::validateInteger($value);
-        $result2 = Validator::validateGreaterThan($value, 200);
-        $result3 = Validator::validateEven($value);
+        $validationGroup = Validator::createValidationGroup()
+            ->addValidation(new IsGreaterThan(10));
 
-        $this->assertTrue($result1 && $result2 && $result3);
-    }
-
-    public function notATestClassValidatorShouldAggregateMultipleValidations(): void
-    {
-        $validator = new Validator();
-
-        $validationGroup = $validator->addValidation(new IsInteger())
-                                     ->addValidation(new IsGreaterThan())
-                                     ->addValidation(new IsEven());
-        
-        $result = $validationGroup->validate(302);
-
-        $this->assertTrue($result);
+        $this->assertTrue($validationGroup->handleValidate('11'));
+        $this->assertFalse($validationGroup->handleValidate('9'));
     }
 }
