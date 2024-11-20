@@ -1,42 +1,70 @@
 <?php
 
-use Application\Validations\IsEven;
-use Application\Validations\IsGreaterThan;
-use Application\Validations\IsInteger;
-use Application\Validator;
+use Application\Interface\ValidatorInterface;
+use Application\ValidationGroup;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass('Application\ValidationGroup')]
 final class ValidationGroupTest extends TestCase
 {
-    public function testValidationGroupWithNoValidations(): void
+    public function testAddValidation(): void
     {
-        $validationGroup = Validator::createValidationGroup();
+        $mockValidation = $this->createMock(ValidatorInterface::class);
 
-        $this->assertTrue($validationGroup->handleValidate('teste'));
+        $group = new ValidationGroup();
+        $result = $group->addValidation($mockValidation);
+
+        $this->assertInstanceOf(ValidationGroup::class, $result);
+        $this->assertNotEmpty($group);
     }
 
-    public function testValidationGroupWithSingleValidation(): void
+    public function testHandleValidateWithAllValidationsPassing(): void
     {
-        $validationGroup = Validator::createValidationGroup()
-            ->addValidation(new IsGreaterThan(10));
+        $mockValidation1 = $this->createMock(ValidatorInterface::class);
+        $mockValidation1->method('handleValidation')->willReturn(true);
 
-        $this->assertTrue($validationGroup->handleValidate('11'));
-        $this->assertFalse($validationGroup->handleValidate('9'));
+        $mockValidation2 = $this->createMock(ValidatorInterface::class);
+        $mockValidation2->method('handleValidation')->willReturn(true);
+
+        $group = new ValidationGroup();
+        $group->addValidation($mockValidation1)
+              ->addValidation($mockValidation2);
+
+        $this->assertTrue($group->handleValidate('teste'));
     }
 
-    public function testValidationGroupWithMultipleValidations(): void
-{
-    $validationGroup = Validator::createValidationGroup()
-        ->addValidation(new IsInteger())
-        ->addValidation(new IsGreaterThan(200))
-        ->addValidation(new IsEven());
+    public function testHandleValidateWithOneValidationFailing(): void
+    {
+        $mockValidation1 = $this->createMock(ValidatorInterface::class);
+        $mockValidation1->method('handleValidation')->willReturn(true);
 
-    $this->assertTrue($validationGroup->handleValidate('302'));
-    $this->assertFalse($validationGroup->handleValidate('301'));
-    $this->assertFalse($validationGroup->handleValidate('199'));
-    $this->assertFalse($validationGroup->handleValidate('302.1'));
-}
+        $mockValidation2 = $this->createMock(ValidatorInterface::class);
+        $mockValidation2->method('handleValidation')->willReturn(false);
 
+        $group = new ValidationGroup();
+        $group->addValidation($mockValidation1)
+              ->addValidation($mockValidation2);
+
+        $this->assertFalse($group->handleValidate('teste'));
+    }
+
+    public function testHandleValidateWithMultipleValidations(): void
+    {
+        $mockValidation1 = $this->createMock(ValidatorInterface::class);
+        $mockValidation1->method('handleValidation')->willReturn(true);
+
+        $mockValidation2 = $this->createMock(ValidatorInterface::class);
+        $mockValidation2->method('handleValidation')->willReturn(false);
+
+        $mockValidation3 = $this->createMock(ValidatorInterface::class);
+        $mockValidation3->method('handleValidation')->willReturn(true);
+
+        $group = new ValidationGroup();
+        $group->addValidation($mockValidation1)
+            ->addValidation($mockValidation2)
+            ->addValidation($mockValidation3);
+
+        $this->assertFalse($group->handleValidate('value'));
+    }
 }
